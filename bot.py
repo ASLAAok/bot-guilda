@@ -74,8 +74,11 @@ def webhook():
             texto_original = dados_mensagem["textMessageData"]["textMessage"].strip()
             texto_minusculo = texto_original.lower()
 
+            # Extrai menções do WhatsApp escondidas no webhook (se houver alguma)
+            mencoes = dados_mensagem.get("textMessageData", {}).get("extendedTextMessageData", {}).get("mentionedJid", [])
+
             # ==================================================================
-            # MENU DE AJUDA COM OS NOVOS JOGOS (/ajuda)
+            # MENU DE AJUDA COM OS JOGOS (/ajuda)
             # ==================================================================
             if texto_minusculo == "/ajuda":
                 menu_ajuda = "🤖 *PAINEL DE COMANDOS – BOT DA GUILDA* 🇵🇹\n\n" \
@@ -84,95 +87,106 @@ def webhook():
                              "• `/[telemóvel]` – Vê a sensi exata (Ex: `/redmi 12`).\n" \
                              "• `/posicoes` – Lista as 4 funções oficiais da guilda.\n" \
                              "• `/escolherposicao [nome]` – Salva a tua função (Ex: `rush`).\n" \
-                             "• `/bater [número]` – Dá uma lição num membro do grupo! 💥\n" \
+                             "• `/bater [@Membro]` – Dá uma lição num membro marcado! 💥\n" \
                              "• `/chute [número]` – Envia um palpite para o jogo da sensi! 🎯\n\n" \
                              "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
                              "• `/jogosensi` – Inicia o Jogo da Sensi Secreta (1 a 30)! 🎮\n" \
-                             "• `/advertencia [número] [motivo]` – Aplica advertência.\n" \
+                             "• `/advertencia [@Membro] [motivo]` – Aplica advertência.\n" \
+                             "• `/removeradvertencia [@Membro]` – Retira uma falta da ficha.\n" \
                              "• `/regras` – Envia as regras oficiais da guilda.\n" \
                              "• `/guerraguilda` – Envia os dias e horários da Guerra.\n" \
                              "• `/xtreino [hora-hora]` – Cria o aviso de treino (Ex: `21:00-23:00`)."
                 enviar_mensagem(chat_id, menu_ajuda)
             # ==================================================================
-            # NOVO SISTEMA DE JOGO: ADIVINHA O NÚMERO (AJUSTADO: 1 A 30)
-            # ==================================================================
-            
-            # 1. Iniciar o Jogo (Apenas ADMs podem começar)
-            elif texto_minusculo == "/jogosensi":
-                if sender_id in ADMINISTRADORES_PERMITIDOS:
-                    if JOGO_ATIVO:
-                        enviar_mensagem(chat_id, "⚠️ *O jogo já está a decorrer!* Usem o comando `/chute [Número]` para tentar adivinhar a sensi secreta!")
-                    else:
-                        NUMERO_SECRETO = random.randint(1, 30)
-                        JOGO_ATIVO = True
-                        msg_inicio = "🎮 *JOGO DA SENSI SECRETA INICIADO!* 🎯\n\n" \
-                                     "O bot escolheu um número secreto (DPI/Sensi) entre **1 e 30**.\n\n" \
-                                     "📌 *Como Jogar:* Todos os membros do grupo podem mandar palpites!\n" \
-                                     "👉 Digitem exatamente: `/chute [Número]` (Ex: `/chute 15`)\n\n" \
-                                     "Quem vai ser o primeiro a acertar e levar o título de Rei do Capa? Soltem os palpites! 🔥"
-                        enviar_mensagem(chat_id, msg_inicio)
-                else:
-                    print("Aviso: Utilizador comum tentou iniciar o jogo.")
-
-            # 2. Receber Palpites (Liberado para todos os membros)
-            elif texto_minusculo.startswith("/chute "):
-                if not JOGO_ATIVO:
-                    enviar_mensagem(chat_id, "⚠️ Não há nenhum jogo ativo de momento! Pede a um ADM para iniciar usando o comando `/jogosensi`.")
-                else:
-                    try:
-                        chute_str = texto_original[7:].strip()
-                        chute = int(chute_str)
-                        
-                        if chute == NUMERO_SECRETO:
-                            # VITÓRIA! O JOGADOR ACERTOU
-                            JOGO_ATIVO = False
-                            NUMERO_SECRETO = None
-                            msg_vitoria = f"👑🏆 *TEMOS UM VENCEDOR NESTA GUILDA!* 🏆👑\n\n" \
-                                          f"O gajo amassou! O palpite *{chute}* estava totalmente correto!\n\n" \
-                                          f"🎯 O número secreto era mesmo *{chute}*.\n" \
-                                          f"🥇 Parabéns! Foste coroado o novo *REI DA SENSI SECRETA* do grupo! 🔥🚀"
-                            enviar_mensagem(chat_id, msg_vitoria)
-                        elif chute < NUMERO_SECRETO:
-                            enviar_mensagem(chat_id, f"❌ *ERRADO!* O palpite {chute} é muito baixo. O número secreto é **MAIS ALTO** ⬆️! Tenta outra vez!")
-                        else:
-                            enviar_mensagem(chat_id, f"❌ *ERRADO!* O palpite {chute} é muito alto. O número secreto é **MAIS BAIXO** ⬇️! Tenta outra vez!")
-                    except Exception:
-                        enviar_mensagem(chat_id, "⚠️ *Erro no formato!* Envia o palpite com um número válido de 1 a 30. Exemplo: `/chute 15`")
-
-            # ==================================================================
-            # COMANDO DE INTERAÇÃO MANTIDO (/bater)
+            # NOVO SISTEMA INTEGRAÇÃO DE MENÇÃO COM @ PARA OS COMANDOS
             # ==================================================================
             elif texto_minusculo.startswith("/bater "):
                 try:
-                    num_alvo = texto_original[7:].strip().replace("+", "").replace(" ", "")
-                    if num_alvo:
-                        enviar_mensagem(chat_id, f"💥🤛 *MADEIRA!* Você bateu em @{num_alvo} por ele ser um mau menino! 🤫")
+                    # Se marcou alguém com @, pega o ID da lista de menções, senão lê o texto digitado
+                    id_alvo = mencoes[0] if mencoes else None
+                    if id_alvo:
+                        num_limpo = id_alvo.split("@")[0]
+                    else:
+                        num_limpo = texto_original[7:].strip().replace("+", "").replace(" ", "").replace("@", "")
+                    
+                    if num_limpo:
+                        enviar_mensagem(chat_id, f"💥🤛 *MADEIRA!* Você bateu em @{num_limpo} por ele ser um mau menino! 🤫")
                 except Exception: pass
 
-            # ==================================================================
-            # SISTEMA SÉRIO: ADVERTÊNCIAS (MÁXIMO 4)
-            # ==================================================================
             elif texto_minusculo.startswith("/advertencia"):
                 if sender_id in ADMINISTRADORES_PERMITIDOS:
                     try:
-                        partes = texto_original.split(maxsplit=2)
-                        if len(partes) == 2:
-                            num_alvo = partes.replace("+", "").replace(" ", "")
-                            id_alvo = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
+                        partes = texto_original.split()
+                        id_alvo = mencoes[0] if mencoes else None
+                        
+                        if id_alvo:
+                            num_limpo = id_alvo.split("@")[0]
+                            # Pega o motivo (tudo depois do comando e da menção)
+                            motivo = texto_original.split(maxsplit=2)[2] if len(partes) >= 3 else ""
+                        else:
+                            partes_texto = texto_original.split(maxsplit=2)
+                            num_limpo = partes_texto[1].replace("+", "").replace(" ", "").replace("@", "")
+                            id_alvo = num_limpo + "@c.us"
+                            motivo = partes_texto[2].strip() if len(partes_texto) >= 3 else ""
+                        
+                        if not motivo:
+                            # Se não tem motivo escrito, é apenas consulta de ficha
                             qtd = ADVERTENCIAS_JOGADORES.get(id_alvo, 0)
-                            enviar_mensagem(chat_id, f"📋 *FICHA DISCIPLINAR:* O jogador @{num_alvo} possui atualmente *{qtd}/4* advertências registadas.")
-                        elif len(partes) >= 3:
-                            num_alvo = partes.replace("+", "").replace(" ", "")
-                            motivo = partes.strip()
-                            id_alvo = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
+                            enviar_mensagem(chat_id, f"📋 *FICHA DISCIPLINAR:* O jogador @{num_limpo} possui atualmente *{qtd}/4* advertências.")
+                        else:
+                            # Aplica +1 advertência
                             ADVERTENCIAS_JOGADORES[id_alvo] = ADVERTENCIAS_JOGADORES.get(id_alvo, 0) + 1
                             nova_qtd = ADVERTENCIAS_JOGADORES[id_alvo]
                             if nova_qtd >= 4:
                                 ADVERTENCIAS_JOGADORES[id_alvo] = 4
-                                enviar_mensagem(chat_id, f"🚨 *PUNIÇÃO MÁXIMA ATINGIDA!* 🚨\n\nO jogador @{num_alvo} recebeu a sua *4ª advertência*.\n• *Motivo final:* {motivo}\n\n❌ *SISTEMA:* Limite de 4/4 atingido. Os Administradores devem **REMOVER IMEDIATAMENTE** este gajo da guilda!")
+                                enviar_mensagem(chat_id, f"🚨 *PUNIÇÃO MÁXIMA ATINGIDA!* 🚨\n\nO jogador @{num_limpo} recebeu a sua *4ª advertência*.\n• *Motivo:* {motivo}\n\n❌ *SISTEMA:* Limite de 4/4 atingido. Os Administradores devem **REMOVER IMEDIATAMENTE** este gajo da guilda!")
                             else:
-                                enviar_mensagem(chat_id, f"⚠️ *ADVERTÊNCIA APLICADA!* ⚠️\n\nO jogador @{num_alvo} foi advertido oficialmente.\n• *Motivo:* {motivo}\n• *Ficha Atual:* *{nova_qtd}/4* advertências.\n\n📌 _Lembrete: Ao atingir a 4ª advertência, a remoção da guilda será automática!_")
-                    except Exception: enviar_mensagem(chat_id, "⚠️ *Erro!* Use: `/advertencia [Número] [Motivo]`")
+                                enviar_mensagem(chat_id, f"⚠️ *ADVERTÊNCIA APLICADA!* ⚠️\n\nO jogador @{num_limpo} foi advertido oficialmente.\n• *Motivo:* {motivo}\n• *Ficha:* *{nova_qtd}/4* advertências.")
+                    except Exception: 
+                        enviar_mensagem(chat_id, "⚠️ *Usa:* `/advertencia [@Membro ou Número] [Motivo]`")
+
+            elif texto_minusculo.startswith("/removeradvertencia"):
+                if sender_id in ADMINISTRADORES_PERMITIDOS:
+                    try:
+                        id_alvo = mencoes[0] if mencoes else None
+                        if id_alvo:
+                            num_limpo = id_alvo.split("@")[0]
+                        else:
+                            partes = texto_original.split()
+                            num_limpo = partes[1].replace("+", "").replace(" ", "").replace("@", "")
+                            id_alvo = num_limpo + "@c.us"
+                        
+                        qtd_atual = ADVERTENCIAS_JOGADORES.get(id_alvo, 0)
+                        if qtd_atual > 0:
+                            ADVERTENCIAS_JOGADORES[id_alvo] = qtd_atual - 1
+                            enviar_mensagem(chat_id, f"🟢 *ADVERTÊNCIA REMOVIDA!* Ficha limpa parcial para @{num_limpo}.\n• *Ficha Atual:* *{ADVERTENCIAS_JOGADORES[id_alvo]}/4* advertências.")
+                        else:
+                            enviar_mensagem(chat_id, f"📋 O jogador @{num_limpo} já se encontra com a ficha totalmente limpa (*0/4*).")
+                    except Exception:
+                        enviar_mensagem(chat_id, "⚠️ *Usa:* `/removeradvertencia [@Membro ou Número]`")
+
+            # ==================================================================
+            # JOGO DA SENSI SECRETA (1 A 30)
+            # ==================================================================
+            elif texto_minusculo == "/jogosensi":
+                if sender_id in ADMINISTRADORES_PERMITIDOS:
+                    if JOGO_ATIVO: enviar_mensagem(chat_id, "⚠️ O jogo já está a decorrer! Usa `/chute [Número]`.")
+                    else:
+                        NUMERO_SECRETO = random.randint(1, 30)
+                        JOGO_ATIVO = True
+                        enviar_mensagem(chat_id, "...🎯 *JOGO DA SENSI SECRETA INICIADO!* 🎮\n\nNúmero escolhido entre **1 e 30**.\n👉 Digitem: `/chute [Número]`!")
+
+            elif texto_minusculo.startswith("/chute "):
+                if not JOGO_ATIVO: enviar_mensagem(chat_id, "⚠️ Não há nenhum jogo ativo. Pede a um ADM para iniciar com `/jogosensi`.")
+                else:
+                    try:
+                        chute = int(texto_original[7:].strip())
+                        if chute == NUMERO_SECRETO:
+                            JOGO_ATIVO, NUMERO_SECRETO = False, None
+                            enviar_mensagem(chat_id, f"👑🏆 *TEMOS VENCEDOR!* O palpite *{chute}* estava correto! Foste coroado o novo *REI DA SENSI SECRETA*! 🔥")
+                        elif chute < NUMERO_SECRETO: enviar_mensagem(chat_id, f"❌ *ERRADO!* O palpite {chute} é muito baixo. É **MAIS ALTO** ⬆️!")
+                        else: enviar_mensagem(chat_id, f"❌ *ERRADO!* O palpite {chute} é muito alto. É **MAIS BAIXO** ⬇️!")
+                    except Exception: enviar_mensagem(chat_id, "⚠️ Envia um número válido de 1 a 30. Exemplo: `/chute 15`")
 
             # SISTEMA DE POSIÇÕES DA GUILDA
             elif texto_minusculo == "/posicoes":
@@ -183,6 +197,9 @@ def webhook():
                 if escolha in ["rush", "suporte", "full gas", "curandeiro"]:
                     POSICOES_JOGADORES[sender_id] = escolha.upper()
                     enviar_mensagem(chat_id, f"✅ *FUNÇÃO ATUALIZADA!* A tua posição oficial é: *{escolha.upper()}*! 🔥")
+
+            elif texto_minusculo == "/minhaposicao":
+                msg = f"🔰 *TUA FICHA:* Atualmente estás registado como: *{POSICOES_JOGADORES[sender_id]}* ⚔️" if sender_id in POSICOES_JOGADORES else "⚠️ Sem função registada. Digita `/posicoes`!"
 
             # COMANDOS DE SENSI MANTIDOS
             elif texto_minusculo == "/sensi":
@@ -200,10 +217,8 @@ def webhook():
                             h1, h2 = horarios.split("-")
                             enviar_mensagem(chat_id, f"📢 *AVISO DE XTREINO DA GUILDA!* 📢\n\n⚔️ *Início:* {h1.strip()}\n🏆 *Fim:* {h2.strip()}\n\nSejam pontuais! 🎮")
                         except Exception: enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/xtreino 19:00-20:00`")
-
                 elif texto_minusculo == "/regras":
                     enviar_mensagem(chat_id, "📜 *REGRAS OFICIAIS DA GUILDA* 📜\n\n1️⃣ Lealdade total.\n2️⃣ Sem toxicidade.\n3️⃣ 7.500 Pontos de Honra.\n4️⃣ 50 Pontos na Guerra.")
-
                 elif texto_minusculo == "/guerraguilda":
                     enviar_mensagem(chat_id, "⚔️ *GUERRA DE GUILDA (FF)* ⚔️\n\n📅 Dias: Quarta, Sexta e Sábado\n⏰ Horário: Das 18:00 às 22:00")
     return jsonify({"status": "sucesso"}), 200
