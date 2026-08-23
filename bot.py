@@ -73,7 +73,7 @@ def webhook():
             texto_minusculo = texto_original.lower()
             
             # ==================================================================
-            # CONTROLO DE MUTE (Se o jogador estiver mutado, apaga a mensagem)
+            # CONTROLO DE MUTE (Se o jogador estiver mutado, deleta a mensagem)
             # ==================================================================
             if sender_id in MEMBROS_MUTADOS:
                 if time.time() < MEMBROS_MUTADOS[sender_id]:
@@ -83,7 +83,7 @@ def webhook():
                     del MEMBROS_MUTADOS[sender_id]
 
             # ==================================================================
-            # COMANDOS LIBERADOS PARA QUALQUER MEMBRO
+            # COMANDOS LIBERADOS PARA QUALQUER MEMBRO (Membros, Recrutas, etc.)
             # ==================================================================
             if texto_minusculo == "/sensi":
                 lista_telemoveis = "📱 *TELEMÓVEIS DISPONÍVEIS NO BOT* 🎯\n\n" \
@@ -102,42 +102,63 @@ def webhook():
                 enviar_mensagem(chat_id, BANCO_DE_SENSI[texto_minusculo])
 
             # ==================================================================
-            # COMANDOS DE ADMINISTRAÇÃO (APENAS ADMs)
+            # COMANDOS DE ADMINISTRAÇÃO (APENAS ADMINISTRADORES AUTORIZADOS)
             # ==================================================================
             if sender_id in ADMINISTRADORES_PERMITIDOS:
                 
-                # COMANDO: /mute [Número] [Minutos] (Ex: /mute 351912345678 10)
+                # COMANDO ATUALIZADO: /mute [Número] [Minutos]
                 if texto_minusculo.startswith("/mute "):
                     try:
                         partes = texto_original.split()
-                        num_alvo = partes[1].strip()
-                        minutos = int(partes[2].strip())
+                        num_alvo = partes[1].replace("+", "").replace(" ", "")
+                        minutos = int(partes[2])
                         
-                        if not num_alvo.endswith("@c.us"):
-                            num_alvo += "@c.us"
-                            
-                        MEMBROS_MUTADOS[num_alvo] = time.time() + (minutos * 60)
-                        enviar_mensagem(chat_id, f"🤫 *CRIADO CASTIGADO!* O jogador @{partes[1]} foi silenciado por *{minutos} minutos* por quebrar as regras.")
-                    except Exception:
-                        enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/mute [Número_Sem_Mais] [Minutos]`\nExemplo: `/mute 351912345678 10`")
+                        versao_com_9 = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
+                        versao_sem_9 = versao_com_9
+                        
+                        if versao_com_9.startswith("3519"):
+                            versao_sem_9 = "351" + versao_com_9[4:]
+                        elif versao_com_9.startswith("55"):
+                            versao_sem_9 = versao_com_9[:4] + versao_com_9[5:]
 
-                # COMANDO: /unmute [Número]
+                        tempo_fim = time.time() + (minutos * 60)
+                        MEMBROS_MUTADOS[versao_com_9] = tempo_fim
+                        MEMBROS_MUTADOS[versao_sem_9] = tempo_fim
+                        
+                        enviar_mensagem(chat_id, f"🤫 *CRIADO CASTIGADO!* O jogador @{num_alvo} foi silenciado por *{minutos} minutos* por quebrar as regras.")
+                    except Exception:
+                        enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/mute [Número] [Minutos]`\nExemplo: `/mute 351912345678 10`")
+
+                # COMANDO ATUALIZADO: /unmute [Número]
                 elif texto_minusculo.startswith("/unmute "):
                     try:
                         partes = texto_original.split()
-                        num_alvo = partes[1].strip()
-                        if not num_alvo.endswith("@c.us"):
-                            num_alvo += "@c.us"
+                        num_alvo = partes[1].replace("+", "").replace(" ", "")
+                        
+                        versao_com_9 = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
+                        versao_sem_9 = versao_com_9
+                        
+                        if versao_com_9.startswith("3519"):
+                            versao_sem_9 = "351" + versao_com_9[4:]
+                        elif versao_com_9.startswith("55"):
+                            versao_sem_9 = versao_com_9[:4] + versao_com_9[5:]
                             
-                        if num_alvo in MEMBROS_MUTADOS:
-                            del MEMBROS_MUTADOS[num_alvo]
-                            enviar_mensagem(chat_id, f"🔊 *PERDÃO CONCEDIDO!* O jogador @{partes[1]} foi desmutado e já pode falar.")
+                        encontrado = False
+                        if versao_com_9 in MEMBROS_MUTADOS:
+                            del MEMBROS_MUTADOS[versao_com_9]
+                            encontrado = True
+                        if versao_sem_9 in MEMBROS_MUTADOS:
+                            del MEMBROS_MUTADOS[versao_sem_9]
+                            encontrado = True
+                            
+                        if encontrado:
+                            enviar_mensagem(chat_id, f"🔊 *PERDÃO CONCEDIDO!* O jogador @{num_alvo} foi desmutado.")
                         else:
-                            enviar_mensagem(chat_id, "⚠️ Este jogador não está mutado.")
+                            enviar_mensagem(chat_id, "⚠️ Este jogador não está mutado de momento.")
                     except Exception:
                         enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/unmute [Número]`")
 
-                # COMANDOS GERAIS DE ADM MANTIDOS
+                # OUTROS COMANDOS DE ADM MANTIDOS
                 elif texto_minusculo.startswith("/xtreino "):
                     horarios = texto_original[9:].strip()
                     if "-" in horarios:
