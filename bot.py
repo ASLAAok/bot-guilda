@@ -82,7 +82,7 @@ def webhook():
                                    "3️⃣ *7.500 Pontos de Honra* Semanais obrigatórios.\n" \
                                    "4️⃣ *50 Pontos* na Guerra de Guilda.\n\n" \
                                    "⚠️ _O descumprimento das regras resultará em remoção direta._"
-                    enviar_mensagem(chat_id,技巧regras_texto)
+                    enviar_mensagem(chat_id, regras_texto)
 
                 # COMANDO: /guerraguilda
                 elif texto_minusculo == "/guerraguilda":
