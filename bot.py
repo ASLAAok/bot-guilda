@@ -1,3 +1,44 @@
+import os
+import random
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+# ==============================================================================
+# CONFIGURAÇÕES DA GREEN API (MANTIDAS)
+# ==============================================================================
+ID_INSTANCE = "710722717263"
+API_TOKEN_INSTANCE = os.getenv("API_TOKEN_INSTANCE", "aad70570e44043fa956d2c159e8a3a8a8c1ca3f1a1b44e268d")
+URL_BASE = os.getenv("URL_BASE", f"https://greenapi.com{ID_INSTANCE}")
+
+admins_env = os.getenv("ADMINS_LIST", "")
+ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us") else adm.strip() for adm in admins_env.split(",") if adm.strip()]
+
+# ARMAZENAMENTO DE DADOS (Salvo na memória do servidor do Render)
+POSICOES_JOGADORES = {}
+ADVERTENCIAS_JOGADORES = {}  # Formato: {"número@c.us": quantidade_de_advertencias}
+
+# BANCO DE DADOS DE SENSIBILIDADE FIXA
+BANCO_DE_SENSI = {
+    "/iphone 11": "📱 *SENSI: iPHONE 11* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 96\n• AWM: 45\n💡 _Dica: Perfeita para armas de um tiro (Desert/M1014)._",
+    "/iphone 12": "📱 *SENSI: iPHONE 12* 🎯\n\n• Geral: 98\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 94\n• AWM: 50\n💡 _Dica: Puxada leve e reta para não passar da cabeça!_",
+    "/iphone 13": "📱 *SENSI: iPHONE 13* 🎯\n\n• Geral: 95\n• Ponto Vermelho: 90\n• Mira 2x: 96\n• Mira 4x: 92\n• AWM: 40\n💡 _Dica: Mira muito firme. Sobe o capa com suavidade!_",
+    "/iphone xr": "📱 *SENSI: iPHONE XR* 🎯\n\n• Geral: 95\n• Ponto Vermelho: 88\n• Mira 2x: 95\n• Mira 4x: 92\n• AWM: 40",
+    "/poco x3": "📱 *SENSI: POCO X3* 🎯\n\n• Geral: 97\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 98\n• DPI Recomendada: 560\n💡 _Dica: Puxada média com meia-lua no botão._",
+    "/poco f5": "📱 *SENSI: POCO F5* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 95\n• DPI Recomendada: 510",
+    "/redmi note 10": "📱 *SENSI: REDMI NOTE 10* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 90\n• Mira 2x: 95\n• Mira 4x: 95\n• DPI Recomendada: 600",
+    "/redmi note 11": "📱 *SENSI: REDMI NOTE 11* 🎯\n\n• Geral: 98\n• Ponto Vermelho: 93\n• Mira 2x: 96\n• Mira 4x: 94\n• DPI Recomendada: 580",
+    "/redmi note 13": "📱 *SENSI: REDMI NOTE 13* 🎯\n\n• Geral: 99\n• Ponto Vermelho: 95\n• Mira 2x: 98\n• Mira 4x: 96\n• DPI Recomendada: 490\n💡 _Dica: Sensi muito estável para dar capas seguidos de SMG!_",
+    "/redmi 12": "📱 *SENSI: REDMI 12* 🎯\n\n• Geral: 96\n• Ponto Vermelho: 94\n• Mira 2x: 97\n• Mira 4x: 95\n• DPI Recomendada: 450\n💡 _Dica: Puxada um pouco mais rápida por causa do ecrã de 90Hz._",
+    "/redmi 13c": "📱 *SENSI: REDMI 13C* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 96\n• Mira 2x: 95\n• Mira 4x: 93\n• DPI Recomendada: 520\n💡 _Dica: Sensi um pouco pesada, puxa o botão de atirar com força!_",
+    "/realme note 60": "📱 *SENSI: REALME NOTE 60* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 95\n• Mira 2x: 98\n• Mira 4x: 96\n• DPI Recomendada: 420\n💡 _Dica: Botão de atirar posicionado em 45% melhora muito o capa!_",
+    "/honor 400 lite": "📱 *SENSI: HONOR 400 LITE* 🎯\n\n• Geral: 95\n• Ponto Vermelho: 89\n• Mira 2x: 94\n• Mira 4x: 91\n• DPI Recomendada: 500\n💡 _Dica: Sensi muito leve, ideal para SMG (MP40/UMP)._",
+    "/samsung a32": "📱 *SENSI: SAMSUNG A32* 🎯\n\n• Geral: 92\n• Ponto Vermelho: 92\n• Mira 2x: 96\n• Mira 4x: 90\n• DPI Recomendada: 720",
+    "/samsung a54": "📱 *SENSI: SAMSUNG A54* 🎯\n\n• Geral: 96\n• Ponto Vermelho: 89\n• Mira 2x: 94\n• Mira 4x: 92\n• DPI Recomendada: 620",
+    "/moto g60": "📱 *SENSI: MOTOROLA G60* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 97\n• DPI Recomendada: 540",
+    "/moto g200": "📱 *SENSI: MOTOROLA G200* 🎯\n\n• Geral: 94\n• Ponto Vermelho: 91\n• Mira 2x: 95\n• Mira 4x: 90\n• DPI Recomendada: 480"
+}
 def enviar_mensagem(chat_id, texto):
     url = f"{URL_BASE}/sendMessage/{API_TOKEN_INSTANCE}"
     payload = {"chatId": chat_id, "message": texto}
@@ -41,57 +82,64 @@ def webhook():
                              "🔥 *RESENHA DOS CRIAS (Portugal):*\n" \
                              "• `/gajo` | `/soro` | `/pinar` | `/looteou` | `/squadpt`\n\n" \
                              "👑 *COMANDOS EXCLUSIVOS DE ADM:*\n" \
-                             "• `/advertencia [número] [motivo]` – Aplica uma advertência.\n" \
+                             "• `/advertencia [número] [motivo]` – Aplica advertência.\n" \
+                             "• `/advertencia [número]` – Consulta a ficha disciplinar.\n" \
+                             "• `/removeradvertencia [número]` – Remove uma falta. 🟢\n" \
                              "• `/regras` | `/guerraguilda` | `/xtreino [hora-hora]`"
                 enviar_mensagem(chat_id, menu_ajuda)
             # ==================================================================
-            # NOVO SISTEMA SÉRIO: SISTEMA DE ADVERTÊNCIAS (MÁXIMO 4)
+            # GESTÃO DISCIPLINAR: ADVERTÊNCIAS (MÁXIMO 4) & REMOVER ADVERTÊNCIA
             # ==================================================================
             if texto_minusculo.startswith("/advertencia"):
-                # Apenas administradores listados podem aplicar ou consultar advertências
                 if sender_id in ADMINISTRADORES_PERMITIDOS:
                     try:
                         partes = texto_original.split(maxsplit=2)
                         
-                        # Se o ADM digitou apenas /advertencia [Número] -> Consulta a ficha
                         if len(partes) == 2:
                             num_alvo = partes[1].replace("+", "").replace(" ", "")
                             id_alvo = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
-                            
                             qtd = ADVERTENCIAS_JOGADORES.get(id_alvo, 0)
                             enviar_mensagem(chat_id, f"📋 *FICHA DISCIPLINAR:* O jogador @{num_alvo} possui atualmente *{qtd}/4* advertências registadas.")
                         
-                        # Se o ADM digitou /advertencia [Número] [Motivo] -> Aplica +1 advertência
                         elif len(partes) >= 3:
                             num_alvo = partes[1].replace("+", "").replace(" ", "")
                             motivo = partes[2].strip()
                             id_alvo = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
                             
-                            # Soma +1 advertência na ficha do meliante
                             ADVERTENCIAS_JOGADORES[id_alvo] = ADVERTENCIAS_JOGADORES.get(id_alvo, 0) + 1
                             nova_qtd = ADVERTENCIAS_JOGADORES[id_alvo]
                             
                             if nova_qtd >= 4:
-                                # PUNIÇÃO MÁXIMA ALCANÇADA
-                                ADVERTENCIAS_JOGADORES[id_alvo] = 4 # Trava no limite máximo
-                                alerta_vermelho = f"🚨 *PUNIÇÃO MÁXIMA ATINGIDA!* 🚨\n\n" \
-                                                  f"O jogador @{num_alvo} acabou de receber a sua *4ª advertência*.\n" \
-                                                  f"• *Motivo final:* {motivo}\n\n" \
-                                                  f"❌ *SISTEMA:* Limite máximo de 4/4 atingido. Os Administradores devem **REMOVER IMEDIATAMENTE** este jogador da guilda por comportamento inadequado!"
+                                ADVERTENCIAS_JOGADORES[id_alvo] = 4
+                                alerta_vermelho = f"🚨 *PUNIÇÃO MÁXIMA ATINGIDA!* 🚨\n\nO jogador @{num_alvo} recebeu a sua *4ª advertência*.\n• *Motivo final:* {motivo}\n\n❌ *SISTEMA:* Limite de 4/4 atingido. Os Administradores devem **REMOVER IMEDIATAMENTE** este gajo da guilda!"
                                 enviar_mensagem(chat_id, alerta_vermelho)
                             else:
-                                # ADVERTÊNCIA PARCIAL
-                                msg_adv = f"⚠️ *ADVERTÊNCIA APLICADA!* ⚠️\n\n" \
-                                          f"O jogador @{num_alvo} foi advertido oficialmente pela liderança.\n" \
-                                          f"• *Motivo:* {motivo}\n" \
-                                          f"• *Ficha Atual:* *{nova_qtd}/4* advertências.\n\n" \
-                                          f"📌 _Lembrete: Ao atingir a 4ª advertência, a remoção da guilda será automática!_"
+                                msg_adv = f"⚠️ *ADVERTÊNCIA APLICADA!* ⚠️\n\nO jogador @{num_alvo} foi advertido oficialmente.\n• *Motivo:* {motivo}\n• *Ficha Atual:* *{nova_qtd}/4* advertências.\n\n📌 _Lembrete: Ao atingir a 4ª advertência, a remoção da guilda será automática!_"
                                 enviar_mensagem(chat_id, msg_adv)
                     except Exception:
-                        enviar_mensagem(chat_id, "⚠️ *Erro no formato!* Use:\n• Para aplicar: `/advertencia [Número] [Motivo]`\n• Para consultar: `/advertencia [Número]`")
-                else:
-                    # Se um membro comum tentar usar o comando, o bot ignora ou dá bronca
-                    print(f"Mensagem bloqueada: Usuário comum tentou dar advertência.")
+                        enviar_mensagem(chat_id, "⚠️ *Erro!* Use:\n• Aplicar: `/advertencia [Número] [Motivo]`\n• Consultar: `/advertencia [Número]`")
+
+            # NOVO COMANDO ADMINISTRATIVO: /removeradvertencia [Número]
+            elif texto_minusculo.startswith("/removeradvertencia"):
+                if sender_id in ADMINISTRADORES_PERMITIDOS:
+                    try:
+                        partes = texto_original.split()
+                        if len(partes) >= 2:
+                            num_alvo = partes[1].replace("+", "").replace(" ", "")
+                            id_alvo = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
+                            
+                            qtd_atual = ADVERTENCIAS_JOGADORES.get(id_alvo, 0)
+                            
+                            if qtd_atual > 0:
+                                ADVERTENCIAS_JOGADORES[id_alvo] = qtd_atual - 1
+                                nova_qtd = ADVERTENCIAS_JOGADORES[id_alvo]
+                                enviar_mensagem(chat_id, f"🟢 *ADVERTÊNCIA REMOVIDA!* Ficha limpa parcial para @{num_alvo}.\n• *Ficha Atual:* *{nova_qtd}/4* advertências.")
+                            else:
+                                enviar_mensagem(chat_id, f"📋 O jogador @{num_alvo} já se encontra com a ficha totalmente limpa (*0/4* advertências).")
+                        else:
+                            enviar_mensagem(chat_id, "⚠️ *Erro!* Digite exatamente assim: `/removeradvertencia [Número]`")
+                    except Exception:
+                        enviar_mensagem(chat_id, "⚠️ *Erro ao processar!* Use: `/removeradvertencia [Número]`")
 
             # ==================================================================
             # COMANDOS DE INTERAÇÃO E RESENHA MANTIDOS
@@ -106,7 +154,7 @@ def webhook():
                 enviar_mensagem(chat_id, f"🤖 *EXPOSTO:* Esse gajo que acabou de mandar mensagem {random.choice(acoes)}")
 
             elif texto_minusculo == "/soro":
-                hps = ["🩸 *ESTÁS A SORO!* Levaste 3 capas seguidos de Carapina. 1 HP! 🧊", "🛡️ *VIDA CHEIA:* Colete blindado nível 4 ativo e pronto pro rush!", "🩹 *A CURAR:* Encontraste 4 kits médicos na guarita. Salvaste-te!"]
+                hps = ["🩸 *ESTÁS A SORO!* Levaste 3 capas seguidos de Carapina. 1 HP! 🧊", "🛡️ *VIDA CHEIA:* Colete blindado nível 4 ativo!", "🩹 *A CURAR:* Encontraste 4 kits médicos na guarita. Salvaste-te!"]
                 enviar_mensagem(chat_id, random.choice(hps))
 
             elif texto_minusculo == "/pinar":
@@ -159,3 +207,4 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(port=5000)
+
