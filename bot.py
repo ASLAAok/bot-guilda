@@ -15,7 +15,6 @@ admins_env = os.getenv("ADMINS_LIST", "")
 ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us") else adm.strip() for adm in admins_env.split(",") if adm.strip()]
 
 # ARMAZENAMENTO DE POSIÇÕES DOS JOGADORES (Salvo na memória do servidor)
-# Formato: {"número_do_jogador": "Nome da Posição"}
 POSICOES_JOGADORES = {}
 
 # BANCO DE DADOS DE SENSIBILIDADE
@@ -67,11 +66,28 @@ def webhook():
             texto_minusculo = texto_original.lower()
 
             # ==================================================================
-            # NOVO SISTEMA: POSIÇÕES E FUNÇÕES DA GUILDA (PARA TODOS)
+            # NOVO COMANDO: MENU DE AJUDA DO BOT (/ajuda)
             # ==================================================================
-            
-            # COMANDO 1: Ver as posições disponíveis
-            if texto_minusculo == "/posicoes":
+            if texto_minusculo == "/ajuda":
+                menu_ajuda = "🤖 *PAINEL DE COMANDOS – BOT DA GUILDA* 🇵🇹\n\n" \
+                             "Aqui tens todos os comandos ativos organizados para a tropa:\n\n" \
+                             "🟢 *COMANDOS DOS JOGADORES (Todos Podem Usar):*\n" \
+                             "• `/sensi` – Lista de telemóveis e configurações para dar capa.\n" \
+                             "• `/[nome do telemóvel]` – Mostra a sensi exata (Ex: `/redmi 12`).\n" \
+                             "• `/posicoes` – Abre a lista de funções oficiais da guilda.\n" \
+                             "• `/escolherposicao [nome]` – Registra a tua função (Ex: `/escolherposicao rush`).\n" \
+                             "• `/minhaposicao` – Consulta qual é a tua função ativa na guilda.\n\n" \
+                             "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
+                             "• `/regras` – Dispara a lista com as regras oficiais do grupo.\n" \
+                             "• `/guerraguilda` – Envia os dias e horários da Guerra de Guildas.\n" \
+                             "• `/xtreino [hora-hora]` – Cria um aviso oficial de treino (Ex: `/xtreino 21:00-23:00`).\n\n" \
+                             "💡 _Nota: Digita os comandos exatamente como estão escritos para o bot responder._"
+                enviar_mensagem(chat_id, menu_ajuda)
+
+            # ==================================================================
+            # SISTEMA DE POSIÇÕES DA GUILDA
+            # ==================================================================
+            elif texto_minusculo == "/posicoes":
                 menu_posicoes = "⚔️ *POSIÇÕES OFICIAIS DA GUILDA* 🛡️\n\n" \
                                 "Aqui tens as 4 funções disponíveis para o competitivo:\n\n" \
                                 "💥 1️⃣ *Rush* – O gajo que avança primeiro e abre espaço a dar capa.\n" \
@@ -82,28 +98,22 @@ def webhook():
                                 "💡 _Exemplo: /escolherposicao full gas_"
                 enviar_mensagem(chat_id, menu_posicoes)
 
-            # COMANDO 2: Escolher e salvar a posição
             elif texto_minusculo.startswith("/escolherposicao "):
                 escolha = texto_minusculo[17:].strip()
-                
-                # Valida se a escolha bate certo com uma das 4 opções oficiais
                 if escolha in ["rush", "suporte", "full gas", "curandeiro"]:
                     POSICOES_JOGADORES[sender_id] = escolha.upper()
-                    nome_formatado = escolha.upper()
-                    enviar_mensagem(chat_id, f"✅ *FUNÇÃO ATUALIZADA!* A partir de agora a tua posição oficial na guilda é: *{nome_formatado}*! Destrói nos treinos! 🔥")
+                    enviar_mensagem(chat_id, f"✅ *FUNÇÃO ATUALIZADA!* A partir de agora a tua posição oficial na guilda é: *{escolha.upper()}*! Destrói nos treinos! 🔥")
                 else:
                     enviar_mensagem(chat_id, "⚠️ *Posição inválida!* Escolha exatamente uma destas quatro:\n• `rush`\n• `suporte`\n• `full gas`\n• `curandeiro`")
 
-            # COMANDO 3: Consultar a própria posição atual
             elif texto_minusculo == "/minhaposicao":
                 if sender_id in POSICOES_JOGADORES:
-                    posi_atual = POSICOES_JOGADORES[sender_id]
-                    enviar_mensagem(chat_id, f"🔰 *TUA FICHA:* Atualmente estás registado no sistema como: *{posi_atual}* ⚔️")
+                    enviar_mensagem(chat_id, f"🔰 *TUA FICHA:* Atualmente estás registado no sistema como: *{POSICOES_JOGADORES[sender_id]}* ⚔️")
                 else:
                     enviar_mensagem(chat_id, "⚠️ Ainda não tens nenhuma função registada. Digita `/posicoes` para escolheres uma!")
 
             # ==================================================================
-            # COMANDOS DE SENSI MANTIDOS (PARA TODOS)
+            # COMANDOS DE SENSI MANTIDOS
             # ==================================================================
             elif texto_minusculo == "/sensi":
                 lista_telemoveis = "📱 *TELEMÓVEIS DISPONÍVEIS NO BOT* 🎯\n\n" \
