@@ -119,7 +119,7 @@ def webhook():
                         if versao_com_9.startswith("3519"):
                             versao_sem_9 = "351" + versao_com_9[4:]
                         elif versao_com_9.startswith("55"):
-                            versao_sem_9 = versao_com_9[:4] + v=ersao_com_9[5:]
+                           versao_sem_9 = versao_com_9[:4] + versao_com_9[5:]
 
                         tempo_fim = time.time() + (minutos * 60)
                         MEMBROS_MUTADOS[versao_com_9] = tempo_fim
