@@ -87,14 +87,14 @@ def webhook():
                              "• `/bater [número]` – Dá uma lição num membro do grupo! 💥\n" \
                              "• `/chute [número]` – Envia um palpite para o jogo da sensi! 🎯\n\n" \
                              "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
-                             "• `/jogosensi` – Inicia o Jogo da Sensi Secreta! 🎮\n" \
+                             "• `/jogosensi` – Inicia o Jogo da Sensi Secreta (1 a 30)! 🎮\n" \
                              "• `/advertencia [número] [motivo]` – Aplica advertência.\n" \
                              "• `/regras` – Envia as regras oficiais da guilda.\n" \
                              "• `/guerraguilda` – Envia os dias e horários da Guerra.\n" \
                              "• `/xtreino [hora-hora]` – Cria o aviso de treino (Ex: `21:00-23:00`)."
                 enviar_mensagem(chat_id, menu_ajuda)
             # ==================================================================
-            # NOVO SISTEMA DE JOGO: A ADIVINHA O NÚMERO (/jogosensi e /chute)
+            # NOVO SISTEMA DE JOGO: ADIVINHA O NÚMERO (AJUSTADO: 1 A 30)
             # ==================================================================
             
             # 1. Iniciar o Jogo (Apenas ADMs podem começar)
@@ -103,12 +103,12 @@ def webhook():
                     if JOGO_ATIVO:
                         enviar_mensagem(chat_id, "⚠️ *O jogo já está a decorrer!* Usem o comando `/chute [Número]` para tentar adivinhar a sensi secreta!")
                     else:
-                        NUMERO_SECRETO = random.randint(1, 50)
+                        NUMERO_SECRETO = random.randint(1, 30)
                         JOGO_ATIVO = True
                         msg_inicio = "🎮 *JOGO DA SENSI SECRETA INICIADO!* 🎯\n\n" \
-                                     "O bot escolheu um número secreto (DPI/Sensi) entre **1 e 50**.\n\n" \
+                                     "O bot escolheu um número secreto (DPI/Sensi) entre **1 e 30**.\n\n" \
                                      "📌 *Como Jogar:* Todos os membros do grupo podem mandar palpites!\n" \
-                                     "👉 Digitem exatamente: `/chute [Número]` (Ex: `/chute 25`)\n\n" \
+                                     "👉 Digitem exatamente: `/chute [Número]` (Ex: `/chute 15`)\n\n" \
                                      "Quem vai ser o primeiro a acertar e levar o título de Rei do Capa? Soltem os palpites! 🔥"
                         enviar_mensagem(chat_id, msg_inicio)
                 else:
@@ -137,7 +137,7 @@ def webhook():
                         else:
                             enviar_mensagem(chat_id, f"❌ *ERRADO!* O palpite {chute} é muito alto. O número secreto é **MAIS BAIXO** ⬇️! Tenta outra vez!")
                     except Exception:
-                        enviar_mensagem(chat_id, "⚠️ *Erro no formato!* Envia o palpite com um número válido de 1 a 50. Exemplo: `/chute 30`")
+                        enviar_mensagem(chat_id, "⚠️ *Erro no formato!* Envia o palpite com um número válido de 1 a 30. Exemplo: `/chute 15`")
 
             # ==================================================================
             # COMANDO DE INTERAÇÃO MANTIDO (/bater)
@@ -210,4 +210,3 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(port=5000)
-
