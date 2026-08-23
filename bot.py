@@ -18,11 +18,11 @@ ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us")
 # ARMAZENAMENTO DE POSIÇÕES DOS JOGADORES (Salvo na memória do servidor)
 POSICOES_JOGADORES = {}
 
-# BANCO DE DADOS DE SENSIBILIDADE (COM REDMI NOTE 13 E REDMI 13C)
+# BANCO DE DADOS DE SENSIBILIDADE FIXA
 BANCO_DE_SENSI = {
     "/iphone 11": "📱 *SENSI: iPHONE 11* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 96\n• AWM: 45\n💡 _Dica: Perfeita para armas de um tiro (Desert/M1014)._",
     "/iphone 12": "📱 *SENSI: iPHONE 12* 🎯\n\n• Geral: 98\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 94\n• AWM: 50\n💡 _Dica: Puxada leve e reta para não passar da cabeça!_",
-    "/iphone 13": "📱 *SENSI: iPHONE 13* 🎯\n\n• Geral: 95\n• Ponto Vermelho: 90\n• Mira 2x: 96\n• Mira 4x: 92\n• AWM: 40",
+    "/iphone 13": "📱 *SENSI: iPHONE 13* 🎯\n\n• Geral: 95\n• Ponto Vermelho: 90\n• Mira 2x: 96\n• Mira 4x: 92\n• AWM: 40\n💡 _Dica: Mira muito firme. Sobe o capa com suavidade!_",
     "/iphone xr": "📱 *SENSI: iPHONE XR* 🎯\n\n• Geral: 95\n• Ponto Vermelho: 88\n• Mira 2x: 95\n• Mira 4x: 92\n• AWM: 40",
     "/poco x3": "📱 *SENSI: POCO X3* 🎯\n\n• Geral: 97\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 98\n• DPI Recomendada: 560\n💡 _Dica: Puxada média com meia-lua no botão._",
     "/poco f5": "📱 *SENSI: POCO F5* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 95\n• DPI Recomendada: 510",
@@ -75,19 +75,38 @@ def webhook():
                 menu_ajuda = "🤖 *PAINEL DE COMANDOS – BOT DA GUILDA* 🇵🇹\n\n" \
                              "🟢 *COMANDOS DOS JOGADORES:*\n" \
                              "• `/sensi` – Lista de telemóveis disponíveis.\n" \
-                             "• `/[telemóvel]` – Vê a sensi exata (Ex: `/redmi note 13`).\n" \
+                             "• `/[telemóvel]` – Vê a sensi exata (Ex: `/iphone 13`).\n" \
+                             "• `/sensirapida` – Gera uma sensi aleatória coringa na hora. ⚡\n" \
                              "• `/posicoes` – Lista de funções da guilda.\n" \
                              "• `/escolherposicao [nome]` – Escolhe a tua função.\n" \
                              "• `/minhaposicao` – Vê a tua ficha ativa.\n\n" \
                              "🔥 *RESENHA DOS CRIAS (Portugal):*\n" \
-                             "• `/gajo` – Expõe um membro aleatório do grupo.\n" \
-                             "• `/soro` – Vê quanto HP de vida real tens hoje.\n" \
-                             "• `/pinar` – Calcula a tua taxa de pino (falhar capas).\n" \
-                             "• `/looteou` – Descobre o teu prémio no airdrop.\n" \
-                             "• `/squadpt` – Sorteia um squad completo com funções.\n\n" \
+                             "• `/gajo` | `/soro` | `/pinar` | `/looteou` | `/squadpt`\n\n" \
                              "👑 *COMANDOS EXCLUSIVOS DE ADM:*\n" \
                              "• `/regras` | `/guerraguilda` | `/xtreino [hora-hora]`"
                 enviar_mensagem(chat_id, menu_ajuda)
+            # ==================================================================
+            # NOVO COMANDO: GERADOR DE SENSIBILIDADE ALEATÓRIA (/sensirapida) - CORRIGIDO
+            # ==================================================================
+            elif texto_minusculo == "/sensirapida":
+                geral = random.randint(90, 100)
+                ponto_vermelho = random.randint(85, 100)
+                mira_2x = random.randint(90, 100)
+                mira_4x = random.randint(88, 100)
+                botao = random.randint(40, 55)
+                dpi = random.choice(["410", "480", "520", "580", "600", "720"])
+                
+                txt_sensi_rapida = f"⚡ *SENSI RÁPIDA ALEATÓRIA* 🎯\n\n" \
+                                   f"Aqui tens uma configuração gerada na hora para testares em qualquer telemóvel:\n\n" \
+                                   f"• Geral: {geral}\n" \
+                                   f"• Ponto Vermelho: {ponto_vermelho}\n" \
+                                   f"• Mira 2x: {mira_2x}\n" \
+                                   f"• Mira 4x: {mira_4x}\n" \
+                                   f"• Botão de Atirar: {botao}%\n" \
+                                   f"• DPI Recomendada: {dpi}\n\n" \
+                                   f"💡 _Dica: Testa no modo treino. Se a mira passar da cabeça, reduz a Geral em 2 pontos!_"
+                enviar_mensagem(chat_id, txt_sensi_rapida)
+
             # ==================================================================
             # COMANDOS: RESENHA PORTUGAL
             # ==================================================================
@@ -148,7 +167,7 @@ def webhook():
 
             elif texto_minusculo.startswith("/escolherposicao "):
                 escolha = texto_minusculo[17:].strip()
-                if choice_valid := [p for p in ["rush", "suporte", "full gas", "curandeiro"] if p == escolha]:
+                if escolha in ["rush", "suporte", "full gas", "curandeiro"]:
                     POSICOES_JOGADORES[sender_id] = escolha.upper()
                     enviar_mensagem(chat_id, f"✅ *FUNÇÃO ATUALIZADA!* A tua posição oficial é: *{escolha.upper()}*! 🔥")
                 else:
@@ -202,3 +221,4 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(port=5000)
+
