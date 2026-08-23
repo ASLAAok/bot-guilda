@@ -74,7 +74,7 @@ def webhook():
             texto_original = dados_mensagem["textMessageData"]["textMessage"].strip()
             texto_minusculo = texto_original.lower()
 
-            # Captura a lista de menções do WhatsApp enviada pela Green API de forma segura
+            # Puxa a lista de menções técnicas enviada pelo WhatsApp de forma totalmente protegida
             mencoes = dados_mensagem.get("textMessageData", {}).get("extendedTextMessageData", {}).get("mentionedJid", [])
 
             # ==================================================================
@@ -98,16 +98,15 @@ def webhook():
                              "• `/xtreino [hora-hora]` – Cria o aviso de treino (Ex: `21:00-23:00`)."
                 enviar_mensagem(chat_id, menu_ajuda)
             # ==================================================================
-            # SISTEMA EXTRA: DETECTOR INTELIGENTE DE NÚMERO / MENÇÃO
+            # CORREÇÃO DEFINITIVA: EXTRAÇÃO DE STRING DE DENTRO DA LISTA MENÇÕES
             # ==================================================================
             elif texto_minusculo.startswith("/bater "):
                 try:
                     num_limpo = None
-                    # 1. Tenta extrair pela marcação técnica do WhatsApp
-                    if mencoes and isinstance(mencoes, list) and len(mencoes) > 0:
-                        num_limpo = mencoes[0].split("@")[0]
+                    if isinstance(mencoes, list) and len(mencoes) > 0:
+                        # Extrai o primeiro item da lista como string limpa e divide no @
+                        num_limpo = str(mencoes[0]).split("@")[0]
                     else:
-                        # 2. Se falhar, limpa o texto escrito após o comando
                         texto_alvo = texto_original[7:].strip()
                         num_limpo = "".join([c for c in texto_alvo if c.isdigit()])
                     
@@ -124,19 +123,21 @@ def webhook():
                         num_limpo = None
                         motivo = ""
                         
-                        if mencoes and isinstance(mencoes, list) and len(mencoes) > 0:
-                            num_limpo = mencoes[0].split("@")[0]
-                            # Junta o motivo ignorando o comando e a menção por texto
+                        if isinstance(mencoes, list) and len(mencoes) > 0:
+                            id_alvo = str(mencoes[0])
+                            num_limpo = id_alvo.split("@")[0]
                             if len(partes) >= 3:
                                 motivo = " ".join(partes[2:])
                         else:
-                            if len(partes) >= 2:
-                                num_limpo = "".join([c for c in partes[1] if c.isdigit()])
-                            if len(partes) >= 3:
-                                motivo = " ".join(partes[2:])
+                            partes_texto = texto_original.split(maxsplit=2)
+                            if len(partes_texto) >= 2:
+                                alvo_bruto = partes_texto[1].replace("+", "").replace(" ", "").replace("@", "")
+                                num_limpo = "".join([c for c in alvo_bruto if c.isdigit()])
+                                id_alvo = num_limpo + "@c.us"
+                            if len(partes_texto) >= 3:
+                                motivo = partes_texto[2].strip()
                         
                         if num_limpo:
-                            id_alvo = num_limpo + "@c.us"
                             if not motivo:
                                 qtd = ADVERTENCIAS_JOGADORES.get(id_alvo, 0)
                                 enviar_mensagem(chat_id, f"📋 *FICHA DISCIPLINAR:* O jogador @{num_limpo} possui atualmente *{qtd}/4* advertências.")
@@ -157,15 +158,17 @@ def webhook():
                 if sender_id in ADMINISTRADORES_PERMITIDOS:
                     try:
                         num_limpo = None
-                        if mencoes and isinstance(mencoes, list) and len(mencoes) > 0:
-                            num_limpo = mencoes[0].split("@")[0]
+                        if isinstance(mencoes, list) and len(mencoes) > 0:
+                            id_alvo = str(mencoes[0])
+                            num_limpo = id_alvo.split("@")[0]
                         else:
                             partes = texto_original.split()
                             if len(partes) >= 2:
-                                num_limpo = "".join([c for c in partes[1] if c.isdigit()])
+                                alvo_bruto = partes[1].replace("+", "").replace(" ", "").replace("@", "")
+                                num_limpo = "".join([c for c in alvo_bruto if c.isdigit()])
+                                id_alvo = num_limpo + "@c.us"
                         
                         if num_limpo:
-                            id_alvo = num_limpo + "@c.us"
                             qtd_atual = ADVERTENCIAS_JOGADORES.get(id_alvo, 0)
                             if qtd_atual > 0:
                                 ADVERTENCIAS_JOGADORES[id_alvo] = qtd_atual - 1
