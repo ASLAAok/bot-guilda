@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, request, jsonify
 import requests
 
@@ -14,7 +15,10 @@ URL_BASE = os.getenv("URL_BASE", f"https://greenapi.com{ID_INSTANCE}")
 admins_env = os.getenv("ADMINS_LIST", "")
 ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us") else adm.strip() for adm in admins_env.split(",") if adm.strip()]
 
-# BANCO DE DADOS DE SENSIBILIDADE (ORGANIZADO PELO COMANDO DIRETO COM A BARRA)
+# BANCO DE DADOS DE SILENCIADOS (Guarda quem está mutado e até que horas)
+MEMBROS_MUTADOS = {}
+
+# BANCO DE DADOS DE SENSIBILIDADE
 BANCO_DE_SENSI = {
     "/iphone 11": "📱 *SENSI: iPHONE 11* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 96\n• AWM: 45\n💡 _Dica: Perfeita para armas de um tiro (Desert/M1014)._",
     "/iphone 12": "📱 *SENSI: iPHONE 12* 🎯\n\n• Geral: 98\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 94\n• AWM: 50\n💡 _Dica: Puxada leve e reta para não passar da cabeça!_",
@@ -38,6 +42,13 @@ def enviar_mensagem(chat_id, texto):
     except Exception as e:
         print(f"Erro ao enviar mensagem: {e}")
 
+def apagar_mensagem(chat_id, message_id):
+    url = f"{URL_BASE}/deleteMessage/{API_TOKEN_INSTANCE}"
+    payload = {"chatId": chat_id, "messageId": message_id}
+    try:
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"Erro ao apagar mensagem: {e}")
 @app.route("/webhook", methods=["POST"])
 def webhook():
     dados = request.get_json()
@@ -53,6 +64,8 @@ def webhook():
 
     elif type_webhook == "incomingMessageReceived":
         dados_mensagem = dados.get("messageData", {})
+        message_id = dados.get("idMessage")
+        
         if dados_mensagem.get("typeMessage") == "textMessage":
             chat_id = dados["senderData"]["chatId"]
             sender_id = dados["senderData"]["sender"]
@@ -60,10 +73,18 @@ def webhook():
             texto_minusculo = texto_original.lower()
             
             # ==================================================================
-            # COMANDOS DE SENSI LIBERADOS PARA QUALQUER MEMBRO
+            # CONTROLO DE MUTE (Se o jogador estiver mutado, apaga a mensagem)
             # ==================================================================
-            
-            # PARTE 1: Se o jogador digitar apenas /sensi
+            if sender_id in MEMBROS_MUTADOS:
+                if time.time() < MEMBROS_MUTADOS[sender_id]:
+                    apagar_mensagem(chat_id, message_id)
+                    return jsonify({"status": "apagado"}), 200
+                else:
+                    del MEMBROS_MUTADOS[sender_id]
+
+            # ==================================================================
+            # COMANDOS LIBERADOS PARA QUALQUER MEMBRO
+            # ==================================================================
             if texto_minusculo == "/sensi":
                 lista_telemoveis = "📱 *TELEMÓVEIS DISPONÍVEIS NO BOT* 🎯\n\n" \
                                    "Digita um dos comandos abaixo exatamente como está escrito para veres a sensi:\n\n" \
@@ -77,15 +98,47 @@ def webhook():
                                    "💡 _Exemplo: Se digitares /iphone 12 o bot responde na hora!_"
                 enviar_mensagem(chat_id, lista_telemoveis)
             
-            # PARTE 2: Se o jogador digitar a barra + o nome do telemóvel cadastrado
             elif texto_minusculo in BANCO_DE_SENSI:
                 enviar_mensagem(chat_id, BANCO_DE_SENSI[texto_minusculo])
 
             # ==================================================================
-            # COMANDOS DE ADMINISTRAÇÃO BLOQUEADOS (APENAS PARA ADMs)
+            # COMANDOS DE ADMINISTRAÇÃO (APENAS ADMs)
             # ==================================================================
             if sender_id in ADMINISTRADORES_PERMITIDOS:
-                if texto_minusculo.startswith("/xtreino "):
+                
+                # COMANDO: /mute [Número] [Minutos] (Ex: /mute 351912345678 10)
+                if texto_minusculo.startswith("/mute "):
+                    try:
+                        partes = texto_original.split()
+                        num_alvo = partes[1].strip()
+                        minutos = int(partes[2].strip())
+                        
+                        if not num_alvo.endswith("@c.us"):
+                            num_alvo += "@c.us"
+                            
+                        MEMBROS_MUTADOS[num_alvo] = time.time() + (minutos * 60)
+                        enviar_mensagem(chat_id, f"🤫 *CRIADO CASTIGADO!* O jogador @{partes[1]} foi silenciado por *{minutos} minutos* por quebrar as regras.")
+                    except Exception:
+                        enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/mute [Número_Sem_Mais] [Minutos]`\nExemplo: `/mute 351912345678 10`")
+
+                # COMANDO: /unmute [Número]
+                elif texto_minusculo.startswith("/unmute "):
+                    try:
+                        partes = texto_original.split()
+                        num_alvo = partes[1].strip()
+                        if not num_alvo.endswith("@c.us"):
+                            num_alvo += "@c.us"
+                            
+                        if num_alvo in MEMBROS_MUTADOS:
+                            del MEMBROS_MUTADOS[num_alvo]
+                            enviar_mensagem(chat_id, f"🔊 *PERDÃO CONCEDIDO!* O jogador @{partes[1]} foi desmutado e já pode falar.")
+                        else:
+                            enviar_mensagem(chat_id, "⚠️ Este jogador não está mutado.")
+                    except Exception:
+                        enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/unmute [Número]`")
+
+                # COMANDOS GERAIS DE ADM MANTIDOS
+                elif texto_minusculo.startswith("/xtreino "):
                     horarios = texto_original[9:].strip()
                     if "-" in horarios:
                         try:
@@ -109,4 +162,3 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(port=5000)
-
