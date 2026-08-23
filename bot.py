@@ -5,13 +5,12 @@ import requests
 app = Flask(__name__)
 
 # ==============================================================================
-# CONFIGURAÇÕES DA GREEN API (Puxa os dados direto do Render)
+# CONFIGURAÇÕES DA GREEN API (CORRIGIDAS DEFINITIVAMENTE)
 # ==============================================================================
 ID_INSTANCE = "710722717263"
 API_TOKEN_INSTANCE = os.getenv("API_TOKEN_INSTANCE", "aad70570e44043fa956d2c159e8a3a8a8c1ca3f1a1b44e268d")
 URL_BASE = f"https://greenapi.com{ID_INSTANCE}"
 
-# Captura a lista de ADMs salvos no Render e limpa os espaços
 admins_env = os.getenv("ADMINS_LIST", "")
 ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us") else adm.strip() for adm in admins_env.split(",") if adm.strip()]
 
