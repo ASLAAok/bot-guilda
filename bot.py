@@ -14,7 +14,11 @@ URL_BASE = os.getenv("URL_BASE", f"https://greenapi.com{ID_INSTANCE}")
 admins_env = os.getenv("ADMINS_LIST", "")
 ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us") else adm.strip() for adm in admins_env.split(",") if adm.strip()]
 
-# BANCO DE DADOS DE SENSIBILIDADE (ATUALIZADO)
+# ARMAZENAMENTO DE POSIÇÕES DOS JOGADORES (Salvo na memória do servidor)
+# Formato: {"número_do_jogador": "Nome da Posição"}
+POSICOES_JOGADORES = {}
+
+# BANCO DE DADOS DE SENSIBILIDADE
 BANCO_DE_SENSI = {
     "/iphone 11": "📱 *SENSI: iPHONE 11* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 96\n• AWM: 45\n💡 _Dica: Perfeita para armas de um tiro (Desert/M1014)._",
     "/iphone 12": "📱 *SENSI: iPHONE 12* 🎯\n\n• Geral: 98\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 94\n• AWM: 50\n💡 _Dica: Puxada leve e reta para não passar da cabeça!_",
@@ -63,9 +67,45 @@ def webhook():
             texto_minusculo = texto_original.lower()
 
             # ==================================================================
-            # COMANDOS LIBERADOS PARA QUALQUER MEMBRO (Membros, Recrutas, etc.)
+            # NOVO SISTEMA: POSIÇÕES E FUNÇÕES DA GUILDA (PARA TODOS)
             # ==================================================================
-            if texto_minusculo == "/sensi":
+            
+            # COMANDO 1: Ver as posições disponíveis
+            if texto_minusculo == "/posicoes":
+                menu_posicoes = "⚔️ *POSIÇÕES OFICIAIS DA GUILDA* 🛡️\n\n" \
+                                "Aqui tens as 4 funções disponíveis para o competitivo:\n\n" \
+                                "💥 1️⃣ *Rush* – O gajo que avança primeiro e abre espaço a dar capa.\n" \
+                                "🎯 2️⃣ *Suporte* – Fica atrás a dar cobertura com armas de sniper/carapina.\n" \
+                                "🏃‍♂️ 3️⃣ *Full Gas* – O mestre da rotação que garante os pontos de mapa.\n" \
+                                "🩹 4️⃣ *Curandeiro* – Focado em salvar a equipa, reviver e gerir os kits.\n\n" \
+                                "📌 *Como escolher a tua:* Digita `/escolherposicao [Nome]`\n" \
+                                "💡 _Exemplo: /escolherposicao full gas_"
+                enviar_mensagem(chat_id, menu_posicoes)
+
+            # COMANDO 2: Escolher e salvar a posição
+            elif texto_minusculo.startswith("/escolherposicao "):
+                escolha = texto_minusculo[17:].strip()
+                
+                # Valida se a escolha bate certo com uma das 4 opções oficiais
+                if escolha in ["rush", "suporte", "full gas", "curandeiro"]:
+                    POSICOES_JOGADORES[sender_id] = escolha.upper()
+                    nome_formatado = escolha.upper()
+                    enviar_mensagem(chat_id, f"✅ *FUNÇÃO ATUALIZADA!* A partir de agora a tua posição oficial na guilda é: *{nome_formatado}*! Destrói nos treinos! 🔥")
+                else:
+                    enviar_mensagem(chat_id, "⚠️ *Posição inválida!* Escolha exatamente uma destas quatro:\n• `rush`\n• `suporte`\n• `full gas`\n• `curandeiro`")
+
+            # COMANDO 3: Consultar a própria posição atual
+            elif texto_minusculo == "/minhaposicao":
+                if sender_id in POSICOES_JOGADORES:
+                    posi_atual = POSICOES_JOGADORES[sender_id]
+                    enviar_mensagem(chat_id, f"🔰 *TUA FICHA:* Atualmente estás registado no sistema como: *{posi_atual}* ⚔️")
+                else:
+                    enviar_mensagem(chat_id, "⚠️ Ainda não tens nenhuma função registada. Digita `/posicoes` para escolheres uma!")
+
+            # ==================================================================
+            # COMANDOS DE SENSI MANTIDOS (PARA TODOS)
+            # ==================================================================
+            elif texto_minusculo == "/sensi":
                 lista_telemoveis = "📱 *TELEMÓVEIS DISPONÍVEIS NO BOT* 🎯\n\n" \
                                    "Digita um dos comandos abaixo exatamente como está escrito para veres a sensi:\n\n" \
                                    "🍏 *iPhones:*\n" \
