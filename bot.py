@@ -73,7 +73,7 @@ def webhook():
             texto_minusculo = texto_original.lower()
             
             # ==================================================================
-            # CONTROLO DE MUTE (Se o jogador estiver mutado, deleta a mensagem)
+            # CONTROLO DE MUTE (Verificação imediata)
             # ==================================================================
             if sender_id in MEMBROS_MUTADOS:
                 if time.time() < MEMBROS_MUTADOS[sender_id]:
@@ -83,7 +83,7 @@ def webhook():
                     del MEMBROS_MUTADOS[sender_id]
 
             # ==================================================================
-            # COMANDOS LIBERADOS PARA QUALQUER MEMBRO (Membros, Recrutas, etc.)
+            # COMANDOS DE MEMBROS LIBERADOS
             # ==================================================================
             if texto_minusculo == "/sensi":
                 lista_telemoveis = "📱 *TELEMÓVEIS DISPONÍVEIS NO BOT* 🎯\n\n" \
@@ -102,11 +102,11 @@ def webhook():
                 enviar_mensagem(chat_id, BANCO_DE_SENSI[texto_minusculo])
 
             # ==================================================================
-            # COMANDOS DE ADMINISTRAÇÃO (APENAS ADMINISTRADORES AUTORIZADOS)
+            # COMANDOS DE ADMINISTRAÇÃO (CORRIGIDOS)
             # ==================================================================
             if sender_id in ADMINISTRADORES_PERMITIDOS:
                 
-                # COMANDO ATUALIZADO: /mute [Número] [Minutos]
+                # CORREÇÃO CRUCIAL DA FUNÇÃO SPLIT
                 if texto_minusculo.startswith("/mute "):
                     try:
                         partes = texto_original.split()
@@ -119,7 +119,7 @@ def webhook():
                         if versao_com_9.startswith("3519"):
                             versao_sem_9 = "351" + versao_com_9[4:]
                         elif versao_com_9.startswith("55"):
-                            versao_sem_9 = versao_com_9[:4] + versao_com_9[5:]
+                            versao_sem_9 = versao_com_9[:4] + v=ersao_com_9[5:]
 
                         tempo_fim = time.time() + (minutos * 60)
                         MEMBROS_MUTADOS[versao_com_9] = tempo_fim
@@ -129,7 +129,6 @@ def webhook():
                     except Exception:
                         enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/mute [Número] [Minutos]`\nExemplo: `/mute 351912345678 10`")
 
-                # COMANDO ATUALIZADO: /unmute [Número]
                 elif texto_minusculo.startswith("/unmute "):
                     try:
                         partes = texto_original.split()
@@ -158,7 +157,6 @@ def webhook():
                     except Exception:
                         enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/unmute [Número]`")
 
-                # OUTROS COMANDOS DE ADM MANTIDOS
                 elif texto_minusculo.startswith("/xtreino "):
                     horarios = texto_original[9:].strip()
                     if "-" in horarios:
