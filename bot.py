@@ -1,5 +1,4 @@
 import os
-import time
 from flask import Flask, request, jsonify
 import requests
 
@@ -15,10 +14,7 @@ URL_BASE = os.getenv("URL_BASE", f"https://greenapi.com{ID_INSTANCE}")
 admins_env = os.getenv("ADMINS_LIST", "")
 ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us") else adm.strip() for adm in admins_env.split(",") if adm.strip()]
 
-# BANCO DE DADOS DE SILENCIADOS (Guarda quem está mutado e até que horas)
-MEMBROS_MUTADOS = {}
-
-# BANCO DE DADOS DE SENSIBILIDADE
+# BANCO DE DADOS DE SENSIBILIDADE (ATUALIZADO)
 BANCO_DE_SENSI = {
     "/iphone 11": "📱 *SENSI: iPHONE 11* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 96\n• AWM: 45\n💡 _Dica: Perfeita para armas de um tiro (Desert/M1014)._",
     "/iphone 12": "📱 *SENSI: iPHONE 12* 🎯\n\n• Geral: 98\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 94\n• AWM: 50\n💡 _Dica: Puxada leve e reta para não passar da cabeça!_",
@@ -28,6 +24,9 @@ BANCO_DE_SENSI = {
     "/poco f5": "📱 *SENSI: POCO F5* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 92\n• Mira 2x: 98\n• Mira 4x: 95\n• DPI Recomendada: 510",
     "/redmi note 10": "📱 *SENSI: REDMI NOTE 10* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 90\n• Mira 2x: 95\n• Mira 4x: 95\n• DPI Recomendada: 600",
     "/redmi note 11": "📱 *SENSI: REDMI NOTE 11* 🎯\n\n• Geral: 98\n• Ponto Vermelho: 93\n• Mira 2x: 96\n• Mira 4x: 94\n• DPI Recomendada: 580",
+    "/redmi 12": "📱 *SENSI: REDMI 12* 🎯\n\n• Geral: 96\n• Ponto Vermelho: 94\n• Mira 2x: 97\n• Mira 4x: 95\n• DPI Recomendada: 450\n💡 _Dica: Puxada um pouco mais rápida por causa do ecrã de 90Hz._",
+    "/realme note 60": "📱 *SENSI: REALME NOTE 60* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 95\n• Mira 2x: 98\n• Mira 4x: 96\n• DPI Recomendada: 420\n💡 _Dica: Botão de atirar posicionado em 45% melhora muito o capa!_",
+    "/honor 400 lite": "📱 *SENSI: HONOR 400 LITE* 🎯\n\n• Geral: 95\n• Ponto Vermelho: 89\n• Mira 2x: 94\n• Mira 4x: 91\n• DPI Recomendada: 500\n💡 _Dica: Sensi muito leve, ideal para SMG (MP40/UMP)._",
     "/samsung a32": "📱 *SENSI: SAMSUNG A32* 🎯\n\n• Geral: 92\n• Ponto Vermelho: 92\n• Mira 2x: 96\n• Mira 4x: 90\n• DPI Recomendada: 720",
     "/samsung a54": "📱 *SENSI: SAMSUNG A54* 🎯\n\n• Geral: 96\n• Ponto Vermelho: 89\n• Mira 2x: 94\n• Mira 4x: 92\n• DPI Recomendada: 620",
     "/moto g60": "📱 *SENSI: MOTOROLA G60* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 97\n• DPI Recomendada: 540",
@@ -41,14 +40,6 @@ def enviar_mensagem(chat_id, texto):
         requests.post(url, json=payload)
     except Exception as e:
         print(f"Erro ao enviar mensagem: {e}")
-
-def apagar_mensagem(chat_id, message_id):
-    url = f"{URL_BASE}/deleteMessage/{API_TOKEN_INSTANCE}"
-    payload = {"chatId": chat_id, "messageId": message_id}
-    try:
-        requests.post(url, json=payload)
-    except Exception as e:
-        print(f"Erro ao apagar mensagem: {e}")
 @app.route("/webhook", methods=["POST"])
 def webhook():
     dados = request.get_json()
@@ -64,26 +55,15 @@ def webhook():
 
     elif type_webhook == "incomingMessageReceived":
         dados_mensagem = dados.get("messageData", {})
-        message_id = dados.get("idMessage")
         
         if dados_mensagem.get("typeMessage") == "textMessage":
             chat_id = dados["senderData"]["chatId"]
             sender_id = dados["senderData"]["sender"]
             texto_original = dados_mensagem["textMessageData"]["textMessage"].strip()
             texto_minusculo = texto_original.lower()
-            
-            # ==================================================================
-            # CONTROLO DE MUTE (Se o jogador estiver mutado, apaga instantaneamente)
-            # ==================================================================
-            if sender_id in MEMBROS_MUTADOS:
-                if time.time() < MEMBROS_MUTADOS[sender_id]:
-                    apagar_mensagem(chat_id, message_id)
-                    return jsonify({"status": "apagado"}), 200
-                else:
-                    del MEMBROS_MUTADOS[sender_id]
 
             # ==================================================================
-            # COMANDOS LIBERADOS PARA QUALQUER MEMBRO
+            # COMANDOS LIBERADOS PARA QUALQUER MEMBRO (Membros, Recrutas, etc.)
             # ==================================================================
             if texto_minusculo == "/sensi":
                 lista_telemoveis = "📱 *TELEMÓVEIS DISPONÍVEIS NO BOT* 🎯\n\n" \
@@ -91,11 +71,13 @@ def webhook():
                                    "🍏 *iPhones:*\n" \
                                    "• `/iphone 11`\n• `/iphone 12`\n• `/iphone 13`\n• `/iphone xr`\n\n" \
                                    "🔥 *Xiaomi / Poco / Redmi:*\n" \
-                                   "• `/poco x3`\n• `/poco f5`\n• `/redmi note 10`\n• `/redmi note 11`\n\n" \
+                                   "• `/poco x3`\n• `/poco f5`\n• `/redmi note 10`\n• `/redmi note 11`\n• `/redmi 12`\n\n" \
+                                   "⚡ *Novos Adicionados:*\n" \
+                                   "• `/realme note 60`\n• `/honor 400 lite`\n\n" \
                                    "🔷 *Samsung & Motorola:*\n" \
                                    "• `/samsung a32`\n• `/samsung a54`\n• `/moto g60`\n• `/moto g200`\n\n" \
                                    "⚠️ *Se o seu telemóvel não aparecer diga o seu que nós adicionamos!*\n\n" \
-                                   "💡 _Exemplo: Se digitares /iphone 12 o bot responde na hora!_"
+                                   "💡 _Exemplo: Se digitares /redmi 12 o bot responde na hora!_"
                 enviar_mensagem(chat_id, lista_telemoveis)
             
             elif texto_minusculo in BANCO_DE_SENSI:
@@ -105,61 +87,7 @@ def webhook():
             # COMANDOS DE ADMINISTRAÇÃO BLOQUEADOS (APENAS ADMs)
             # ==================================================================
             if sender_id in ADMINISTRADORES_PERMITIDOS:
-                
-                # COMANDO CORRIGIDO DE MUTE
-                if texto_minusculo.startswith("/mute "):
-                    try:
-                        partes = texto_original.split()
-                        num_alvo = partes[1].replace("+", "").replace(" ", "")
-                        minutos = int(partes[2])
-                        
-                        versao_com_9 = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
-                        versao_sem_9 = versao_com_9
-                        
-                        if versao_com_9.startswith("3519"):
-                            versao_sem_9 = "351" + versao_com_9[4:]
-                        elif versao_com_9.startswith("55"):
-                            versao_sem_9 = versao_com_9[:4] + versao_com_9[5:]
-
-                        tempo_fim = time.time() + (minutos * 60)
-                        MEMBROS_MUTADOS[versao_com_9] = tempo_fim
-                        MEMBROS_MUTADOS[versao_sem_9] = tempo_fim
-                        
-                        enviar_mensagem(chat_id, f"🤫 *CRIADO CASTIGADO!* O jogador @{num_alvo} foi silenciado por *{minutos} minutos* por quebrar as regras.")
-                    except Exception:
-                        enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/mute [Número] [Minutos]`\nExemplo: `/mute 351912345678 10`")
-
-                # COMANDO CORRIGIDO DE UNMUTE
-                elif texto_minusculo.startswith("/unmute "):
-                    try:
-                        partes = texto_original.split()
-                        num_alvo = partes[1].replace("+", "").replace(" ", "")
-                        
-                        versao_com_9 = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
-                        versao_sem_9 = versao_com_9
-                        
-                        if versao_com_9.startswith("3519"):
-                            versao_sem_9 = "351" + versao_com_9[4:]
-                        elif versao_com_9.startswith("55"):
-                            versao_sem_9 = versao_com_9[:4] + versao_com_9[5:]
-                            
-                        encontrado = False
-                        if versao_com_9 in MEMBROS_MUTADOS:
-                            del MEMBROS_MUTADOS[versao_com_9]
-                            encontrado = True
-                        if versao_sem_9 in MEMBROS_MUTADOS:
-                            del MEMBROS_MUTADOS[versao_sem_9]
-                            encontrado = True
-                            
-                        if encontrado:
-                            enviar_mensagem(chat_id, f"🔊 *PERDÃO CONCEDIDO!* O jogador @{num_alvo} foi desmutado e já pode voltar a falar.")
-                        else:
-                            enviar_mensagem(chat_id, "⚠️ Este jogador não está mutado de momento.")
-                    except Exception:
-                        enviar_mensagem(chat_id, "⚠️ *Erro!* Usa: `/unmute [Número]`")
-
-                # OUTROS COMANDOS MANTIDOS
-                elif texto_minusculo.startswith("/xtreino "):
+                if texto_minusculo.startswith("/xtreino "):
                     horarios = texto_original[9:].strip()
                     if "-" in horarios:
                         try:
@@ -183,4 +111,3 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(port=5000)
-
