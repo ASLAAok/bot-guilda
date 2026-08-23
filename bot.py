@@ -36,7 +36,7 @@ BANCO_DE_SENSI = {
     "/samsung a32": "📱 *SENSI: SAMSUNG A32* 🎯\n\n• Geral: 92\n• Ponto Vermelho: 92\n• Mira 2x: 96\n• Mira 4x: 90\n• DPI Recomendada: 720",
     "/samsung a54": "📱 *SENSI: SAMSUNG A54* 🎯\n\n• Geral: 96\n• Ponto Vermelho: 89\n• Mira 2x: 94\n• Mira 4x: 92\n• DPI Recomendada: 620",
     "/moto g60": "📱 *SENSI: MOTOROLA G60* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 97\n• DPI Recomendada: 540",
-    "/moto g200": "📱 *SENSI: MOTOROLA G200* 🎯\n\n• Geral: 94\n• Ponto Vermelho: 91\n• Mira 2x: 95\n• Mira 4x: 90\n• DPI Recomendada: 480"
+    "/moto g200": "📱 *SENSI: MOTOROLA G200* 🎯\n\n• Geral: 94\n41• Ponto Vermelho: 91\n• Mira 2x: 95\n• Mira 4x: 90\n• DPI Recomendada: 480"
 }
 def enviar_mensagem(chat_id, texto):
     url = f"{URL_BASE}/sendMessage/{API_TOKEN_INSTANCE}"
@@ -69,7 +69,7 @@ def webhook():
             texto_minusculo = texto_original.lower()
 
             # ==================================================================
-            # MENU DE AJUDA APENAS COM OS COMANDOS QUE JÁ APLICASTE 🇵🇹
+            # MENU DE AJUDA COM O NOVO COMANDO (/ajuda)
             # ==================================================================
             if texto_minusculo == "/ajuda":
                 menu_ajuda = "🤖 *PAINEL DE COMANDOS – BOT DA GUILDA* 🇵🇹\n\n" \
@@ -77,13 +77,31 @@ def webhook():
                              "• `/sensi` – Mostra os telemóveis cadastrados no bot.\n" \
                              "• `/[telemóvel]` – Vê a sensi exata (Ex: `/redmi 12`).\n" \
                              "• `/posicoes` – Lista as 4 funções oficiais da guilda.\n" \
-                             "• `/escolherposicao [nome]` – Salva a tua função (Ex: `full gas`).\n\n" \
+                             "• `/escolherposicao [nome]` – Salva a tua função (Ex: `full gas`).\n" \
+                             "• `/bater [número]` – Dá uma lição num membro do grupo! 💥\n\n" \
                              "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
                              "• `/advertencia [número] [motivo]` – Aplica advertência.\n" \
                              "• `/regras` – Envia as regras oficiais da guilda.\n" \
                              "• `/guerraguilda` – Envia os dias e horários da Guerra.\n" \
                              "• `/xtreino [hora-hora]` – Cria o aviso de treino (Ex: `21:00-23:00`)."
                 enviar_mensagem(chat_id, menu_ajuda)
+            # ==================================================================
+            # NOVO COMANDO DE INTERAÇÃO: /bater [Número]
+            # ==================================================================
+            elif texto_minusculo.startswith("/bater "):
+                try:
+                    num_alvo = texto_original[7:].strip()
+                    # Remove símbolos comuns como + ou espaços que o usuário possa digitar
+                    num_alvo = num_alvo.replace("+", "").replace(" ", "")
+                    
+                    if num_alvo:
+                        txt_bater = f"💥🤛 *MADEIRA!* Você bateu em @{num_alvo} por ele ser um mau menino! 🤫"
+                        enviar_mensagem(chat_id, txt_bater)
+                    else:
+                        enviar_mensagem(chat_id, "⚠️ *Erro!* Digite o comando seguido do número de quem quer bater. Exemplo: `/bater 351912345678`")
+                except Exception:
+                    enviar_mensagem(chat_id, "⚠️ *Erro ao processar!* Use: `/bater [Número]`")
+
             # ==================================================================
             # SISTEMA SÉRIO: SISTEMA DE ADVERTÊNCIAS (MÁXIMO 4)
             # ==================================================================
@@ -93,14 +111,14 @@ def webhook():
                         partes = texto_original.split(maxsplit=2)
                         
                         if len(partes) == 2:
-                            num_alvo = partes.replace("+", "").replace(" ", "")
+                            num_alvo = partes[1].replace("+", "").replace(" ", "")
                             id_alvo = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
                             qtd = ADVERTENCIAS_JOGADORES.get(id_alvo, 0)
                             enviar_mensagem(chat_id, f"📋 *FICHA DISCIPLINAR:* O jogador @{num_alvo} possui atualmente *{qtd}/4* advertências registadas.")
                         
                         elif len(partes) >= 3:
-                            num_alvo = partes.replace("+", "").replace(" ", "")
-                            motivo = partes.strip()
+                            num_alvo = partes[1].replace("+", "").replace(" ", "")
+                            motivo = partes[2].strip()
                             id_alvo = num_alvo if num_alvo.endswith("@c.us") else num_alvo + "@c.us"
                             
                             ADVERTENCIAS_JOGADORES[id_alvo] = ADVERTENCIAS_JOGADORES.get(id_alvo, 0) + 1
@@ -152,3 +170,4 @@ def webhook():
 
 if __name__ == "__main__":
     app.run(port=5000)
+
