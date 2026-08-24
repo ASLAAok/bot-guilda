@@ -44,6 +44,21 @@ BANCO_DE_SENSI = {
     "/moto g60": "📱 *SENSI: MOTOROLA G60* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 97\n• DPI Recomendada: 540",
     "/moto g200": "📱 *SENSI: MOTOROLA G200* 🎯\n\n• Geral: 94\n• Ponto Vermelho: 91\n• Mira 2x: 95\n• Mira 4x: 90\n• DPI Recomendada: 480"
 }
+
+# BANCO DE FRASES PARA O /ROAST
+FRASES_ROAST = [
+    "é tão lento no jogo que o bot 40k chega antes dele à extração! 🐌",
+    "tem mais advertências na guilda do que kills na última partida! 📋",
+    "usa sensi de 100 em tudo e ainda assim erra o adversário parado! 🎯❌",
+    "só sobrevive porque os outros morrem primeiro e ele fica a fazer de morto! 💀",
+    "compra passe de elite e continua a jogar como se fosse bronze! 🥉",
+    "grita 'cobertura' e depois é o primeiro a fugir! 🏃‍♂️💨",
+    "tem tanto delay que já morreu antes de ver o inimigo aparecer! 📶",
+    "é tão fraco no 1v1 que até o bot recua! 🤖",
+    "gasta a granada e acerta em ninguém, nem na parede! 💣",
+    "diz que é pro mas ainda pergunta como se recarrega a arma! 🔫",
+]
+
 def banir_membro(chat_id, participante_id):
     """Remove um participante de um grupo usando a API da GREEN-API."""
     url = f"{URL_BASE}/removeGroupParticipant/{API_TOKEN_INSTANCE}"
@@ -147,6 +162,7 @@ def webhook():
                              "• `/posicoes` – Lista as 4 funções oficiais da guilda.\n" \
                              "• `/escolherposicao [nome]` – Salva a tua função (Ex: `rush`).\n" \
                              "• `/bater [@Membro]` – Dá uma lição num membro marcado! 💥\n" \
+                             "• `/roast [@Membro]` – Manda uma zoeira aleatória em alguém! 🔥\n" \
                              "• `/chute [número]` – Envia um palpite para o jogo da sensi! 🎯\n\n" \
                              "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
                              "• `/jogosensi` – Inicia o Jogo da Sensi Secreta (1 a 30)! 🎮\n" \
@@ -177,6 +193,26 @@ def webhook():
                     else:
                         enviar_mensagem(chat_id, "⚠️ *Usa:* `/bater [@Membro ou Número]`")
                 except Exception: pass
+
+            # ==================================================================
+            # /ROAST — MANDA UMA ZOEIRA ALEATÓRIA NUM MEMBRO MARCADO OU NUM NÚMERO
+            # ==================================================================
+            elif texto_minusculo.startswith("/roast"):
+                try:
+                    num_limpo = None
+                    if isinstance(mencoes, list) and len(mencoes) > 0:
+                        num_limpo = str(mencoes[0]).split("@")[0]
+                    else:
+                        texto_alvo = texto_original[6:].strip()
+                        num_limpo = "".join([c for c in texto_alvo if c.isdigit()])
+
+                    if num_limpo:
+                        frase = random.choice(FRASES_ROAST)
+                        enviar_mensagem(chat_id, f"🔥 *ROAST TIME!* 🔥\n\n@{num_limpo} {frase}")
+                    else:
+                        enviar_mensagem(chat_id, "⚠️ *Usa:* `/roast [@Membro ou Número]`")
+                except Exception:
+                    enviar_mensagem(chat_id, "⚠️ *Usa:* `/roast [@Membro ou Número]`")
 
             # ==================================================================
             # /BANIR — AGORA FUNCIONA APENAS COM NÚMERO (SEM MARCAÇÃO @)
