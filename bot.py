@@ -18,6 +18,7 @@ ADMINISTRADORES_PERMITIDOS = [adm.strip() + "@c.us" if not adm.endswith("@c.us")
 # ARMAZENAMENTO DE DADOS (Salvo na memória do servidor do Render)
 POSICOES_JOGADORES = {}
 ADVERTENCIAS_JOGADORES = {}
+GRUPOS_MUTADOS = set()  # Guarda os chatId dos grupos atualmente em modo /mute
 
 # VARIÁVEIS DO JOGO DA SENSI SECRETA
 NUMERO_SECRETO = None
@@ -67,6 +68,17 @@ def enviar_mensagem(chat_id, texto):
     except Exception as e:
         print(f"Erro ao enviar mensagem: {e}")
 
+def apagar_mensagem(chat_id, id_mensagem):
+    """Apaga uma mensagem do grupo (para todos) usando a Green API."""
+    url = f"{URL_BASE}/deleteMessage/{API_TOKEN_INSTANCE}"
+    payload = {"chatId": chat_id, "idMessage": id_mensagem}
+    try:
+        resposta = requests.post(url, json=payload, timeout=15)
+        return resposta.ok
+    except Exception as e:
+        print(f"Erro ao apagar mensagem: {e}")
+        return False
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     global NUMERO_SECRETO, JOGO_ATIVO
@@ -93,10 +105,41 @@ def webhook():
             # Puxa a lista de menções técnicas enviada pelo WhatsApp de forma totalmente protegida
             mencoes = dados_mensagem.get("textMessageData", {}).get("extendedTextMessageData", {}).get("mentionedJid", [])
 
+            # ID da mensagem recebida (necessário para conseguir apagá-la depois)
+            id_mensagem = dados.get("idMessage")
+
+            # ==================================================================
+            # /MUTE E /UNMUTE — APAGA AUTOMATICAMENTE AS MENSAGENS DO GRUPO
+            # ==================================================================
+            if texto_minusculo == "/mute":
+                if sender_id in ADMINISTRADORES_PERMITIDOS:
+                    GRUPOS_MUTADOS.add(chat_id)
+                    enviar_mensagem(chat_id, "🔇 *GRUPO MUTADO!*\n\nA partir de agora, todas as mensagens enviadas por membros serão apagadas automaticamente. Usa `/unmute` para desativar.")
+                else:
+                    enviar_mensagem(chat_id, "⛔ *Apenas administradores podem usar este comando.*")
+
+            elif texto_minusculo == "/unmute":
+                if sender_id in ADMINISTRADORES_PERMITIDOS:
+                    if chat_id in GRUPOS_MUTADOS:
+                        GRUPOS_MUTADOS.discard(chat_id)
+                        enviar_mensagem(chat_id, "🔊 *GRUPO DESMUTADO!* As mensagens voltaram ao normal. 🎉")
+                    else:
+                        enviar_mensagem(chat_id, "⚠️ Este grupo já não está mutado.")
+                else:
+                    enviar_mensagem(chat_id, "⛔ *Apenas administradores podem usar este comando.*")
+
+            # Enquanto o grupo estiver mutado, apaga automaticamente qualquer mensagem
+            # de quem NÃO for administrador (para que os ADMs continuem a conseguir falar/gerir).
+            elif chat_id in GRUPOS_MUTADOS and sender_id not in ADMINISTRADORES_PERMITIDOS:
+                if id_mensagem:
+                    apagado = apagar_mensagem(chat_id, id_mensagem)
+                    if not apagado:
+                        print(f"Falha ao apagar mensagem {id_mensagem} no chat {chat_id}")
+
             # ==================================================================
             # MENU DE AJUDA COM OS JOGOS (/ajuda)
             # ==================================================================
-            if texto_minusculo == "/ajuda":
+            elif texto_minusculo == "/ajuda":
                 menu_ajuda = "🤖 *PAINEL DE COMANDOS – BOT DA GUILDA* 🇵🇹\n\n" \
                              "🟢 *COMANDOS DOS JOGADORES (Gerais):*\n" \
                              "• `/sensi` – Mostra os telemóveis cadastrados no bot.\n" \
@@ -110,6 +153,8 @@ def webhook():
                              "• `/advertencia [@Membro] [motivo]` – Aplica advertência.\n" \
                              "• `/banir [número]` – Remove o membro pelo número do grupo.\n" \
                              "• `/removeradvertencia [@Membro]` – Retira uma falta da ficha.\n" \
+                             "• `/mute` – Apaga automaticamente as mensagens de quem não é ADM.\n" \
+                             "• `/unmute` – Desativa o modo mute do grupo.\n" \
                              "• `/regras` – Envia as regras oficiais da guilda.\n" \
                              "• `/guerraguilda` – Envia os dias e horários da Guerra.\n" \
                              "• `/xtreino [hora-hora]` – Cria o aviso de treino (Ex: `21:00-23:00`)."
