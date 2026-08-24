@@ -43,6 +43,22 @@ BANCO_DE_SENSI = {
     "/moto g60": "📱 *SENSI: MOTOROLA G60* 🎯\n\n• Geral: 100\n• Ponto Vermelho: 95\n• Mira 2x: 100\n• Mira 4x: 97\n• DPI Recomendada: 540",
     "/moto g200": "📱 *SENSI: MOTOROLA G200* 🎯\n\n• Geral: 94\n• Ponto Vermelho: 91\n• Mira 2x: 95\n• Mira 4x: 90\n• DPI Recomendada: 480"
 }
+def banir_membro(chat_id, participante_id):
+    """Remove um participante de um grupo usando a API da GREEN-API."""
+    url = f"{URL_BASE}/removeGroupParticipant/{API_TOKEN_INSTANCE}"
+    payload = {"groupId": chat_id, "participantChatId": participante_id}
+    try:
+        resposta = requests.post(url, json=payload, timeout=15)
+        if resposta.ok:
+            try:
+                return resposta.json().get("removeParticipant", False), resposta.text
+            except Exception:
+                return False, resposta.text
+        return False, resposta.text
+    except Exception as e:
+        print(f"Erro ao banir participante: {e}")
+        return False, str(e)
+
 def enviar_mensagem(chat_id, texto):
     url = f"{URL_BASE}/sendMessage/{API_TOKEN_INSTANCE}"
     payload = {"chatId": chat_id, "message": texto}
@@ -92,6 +108,7 @@ def webhook():
                              "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
                              "• `/jogosensi` – Inicia o Jogo da Sensi Secreta (1 a 30)! 🎮\n" \
                              "• `/advertencia [@Membro] [motivo]` – Aplica advertência.\n" \
+                             "• `/banir [@Membro]` – Remove o membro marcado do grupo.\n" \
                              "• `/removeradvertencia [@Membro]` – Retira uma falta da ficha.\n" \
                              "• `/regras` – Envia as regras oficiais da guilda.\n" \
                              "• `/guerraguilda` – Envia os dias e horários da Guerra.\n" \
@@ -115,6 +132,40 @@ def webhook():
                     else:
                         enviar_mensagem(chat_id, "⚠️ *Usa:* `/bater [@Membro ou Número]`")
                 except Exception: pass
+
+            elif texto_minusculo.startswith("/banir"):
+                if sender_id in ADMINISTRADORES_PERMITIDOS:
+                    try:
+                        if isinstance(mencoes, list) and len(mencoes) > 0:
+                            id_alvo = str(mencoes[0]).strip()
+                            if "@" not in id_alvo:
+                                id_alvo += "@c.us"
+                            num_limpo = id_alvo.split("@")[0]
+
+                            if id_alvo == sender_id:
+                                enviar_mensagem(chat_id, "⚠️ Não podes usar `/banir` em ti próprio.")
+                            else:
+                                removido, resposta_api = banir_membro(chat_id, id_alvo)
+                                if removido:
+                                    enviar_mensagem(
+                                        chat_id,
+                                        f"🔨 *BANIMENTO EXECUTADO!*\n\n"
+                                        f"@{num_limpo} foi removido do grupo pelo administrador. 🚫"
+                                    )
+                                else:
+                                    print(f"GREEN-API /banir: {resposta_api}")
+                                    enviar_mensagem(
+                                        chat_id,
+                                        f"❌ *Não foi possível banir* @{num_limpo}.\n"
+                                        f"Verifica se o bot é administrador do grupo e se o membro ainda está no grupo."
+                                    )
+                        else:
+                            enviar_mensagem(chat_id, "⚠️ *Usa:* `/banir [@Membro]` e marca a pessoa com o @.")
+                    except Exception as e:
+                        print(f"Erro no comando /banir: {e}")
+                        enviar_mensagem(chat_id, "⚠️ Ocorreu um erro ao tentar banir. Usa: `/banir [@Membro]`")
+                else:
+                    enviar_mensagem(chat_id, "⛔ *Apenas administradores podem usar este comando.*")
 
             elif texto_minusculo.startswith("/advertencia"):
                 if sender_id in ADMINISTRADORES_PERMITIDOS:
