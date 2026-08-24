@@ -108,7 +108,7 @@ def webhook():
                              "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
                              "• `/jogosensi` – Inicia o Jogo da Sensi Secreta (1 a 30)! 🎮\n" \
                              "• `/advertencia [@Membro] [motivo]` – Aplica advertência.\n" \
-                             "• `/banir [@Membro]` – Remove o membro marcado do grupo.\n" \
+                             "• `/banir [número]` – Remove o membro pelo número do grupo.\n" \
                              "• `/removeradvertencia [@Membro]` – Retira uma falta da ficha.\n" \
                              "• `/regras` – Envia as regras oficiais da guilda.\n" \
                              "• `/guerraguilda` – Envia os dias e horários da Guerra.\n" \
@@ -133,14 +133,23 @@ def webhook():
                         enviar_mensagem(chat_id, "⚠️ *Usa:* `/bater [@Membro ou Número]`")
                 except Exception: pass
 
+            # ==================================================================
+            # /BANIR — AGORA FUNCIONA APENAS COM NÚMERO (SEM MARCAÇÃO @)
+            # ==================================================================
             elif texto_minusculo.startswith("/banir"):
                 if sender_id in ADMINISTRADORES_PERMITIDOS:
                     try:
-                        if isinstance(mencoes, list) and len(mencoes) > 0:
-                            id_alvo = str(mencoes[0]).strip()
-                            if "@" not in id_alvo:
-                                id_alvo += "@c.us"
-                            num_limpo = id_alvo.split("@")[0]
+                        # Extrai apenas o número, ignorando qualquer marcação @
+                        partes_texto = texto_original.split(maxsplit=1)
+                        num_limpo = None
+
+                        if len(partes_texto) >= 2:
+                            alvo_bruto = partes_texto[1]
+                            # remove tudo que não for dígito (espaços, +, @, letras etc.)
+                            num_limpo = "".join([c for c in alvo_bruto if c.isdigit()])
+
+                        if num_limpo:
+                            id_alvo = num_limpo + "@c.us"
 
                             if id_alvo == sender_id:
                                 enviar_mensagem(chat_id, "⚠️ Não podes usar `/banir` em ti próprio.")
@@ -157,13 +166,13 @@ def webhook():
                                     enviar_mensagem(
                                         chat_id,
                                         f"❌ *Não foi possível banir* @{num_limpo}.\n"
-                                        f"Verifica se o bot é administrador do grupo e se o membro ainda está no grupo."
+                                        f"Verifica se o bot é administrador do grupo e se o número está correto."
                                     )
                         else:
-                            enviar_mensagem(chat_id, "⚠️ *Usa:* `/banir [@Membro]` e marca a pessoa com o @.")
+                            enviar_mensagem(chat_id, "⚠️ *Usa:* `/banir [número]` (ex: `/banir 351912345678`)")
                     except Exception as e:
                         print(f"Erro no comando /banir: {e}")
-                        enviar_mensagem(chat_id, "⚠️ Ocorreu um erro ao tentar banir. Usa: `/banir [@Membro]`")
+                        enviar_mensagem(chat_id, "⚠️ Ocorreu um erro ao tentar banir. Usa: `/banir [número]`")
                 else:
                     enviar_mensagem(chat_id, "⛔ *Apenas administradores podem usar este comando.*")
 
