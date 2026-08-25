@@ -1,5 +1,6 @@
 import os
 import random
+import re
 from flask import Flask, request, jsonify
 import requests
 
@@ -163,7 +164,8 @@ def webhook():
                              "• `/escolherposicao [nome]` – Salva a tua função (Ex: `rush`).\n" \
                              "• `/bater [@Membro]` – Dá uma lição num membro marcado! 💥\n" \
                              "• `/roast [@Membro]` – Manda uma zoeira aleatória em alguém! 🔥\n" \
-                             "• `/chute [número]` – Envia um palpite para o jogo da sensi! 🎯\n\n" \
+                             "• `/chute [número]` – Envia um palpite para o jogo da sensi! 🎯\n" \
+                             "• `/camp \"horário\" \"prémio\"` – Cria um aviso de camp (o prémio é opcional).\n\n" \
                              "👑 *COMANDOS EXCLUSIVOS DE ADM (Bloqueados):*\n" \
                              "• `/jogosensi` – Inicia o Jogo da Sensi Secreta (1 a 30)! 🎮\n" \
                              "• `/advertencia [@Membro] [motivo]` – Aplica advertência.\n" \
@@ -363,6 +365,35 @@ def webhook():
             
             elif texto_minusculo in BANCO_DE_SENSI:
                 enviar_mensagem(chat_id, BANCO_DE_SENSI[texto_minusculo])
+
+            elif texto_minusculo.startswith("/camp"):
+                # Aberto a todos os utilizadores. Aceita: /camp "horario" "premio"  OU  /camp "horario"
+                partes_camp = re.findall(r'"([^"]*)"', texto_original)
+                if len(partes_camp) == 2:
+                    horario_camp, premio_camp = partes_camp
+                    enviar_mensagem(
+                        chat_id,
+                        f"🏕️ *CAMP DA GUILDA!* 🏕️\n\n"
+                        f"⏰ *Horário:* {horario_camp.strip()}\n"
+                        f"🎁 *Prémio:* {premio_camp.strip()}\n\n"
+                        f"Apareçam todos! 🔥"
+                    )
+                elif len(partes_camp) == 1:
+                    horario_camp = partes_camp[0]
+                    enviar_mensagem(
+                        chat_id,
+                        f"🏕️ *CAMP DA GUILDA!* 🏕️\n\n"
+                        f"⏰ *Horário:* {horario_camp.strip()}\n\n"
+                        f"Apareçam todos! 🔥"
+                    )
+                else:
+                    enviar_mensagem(
+                        chat_id,
+                        "⚠️ *Usa:*\n"
+                        "`/camp \"horário\" \"prémio\"` (com prémio)\n"
+                        "ou\n"
+                        "`/camp \"horário\"` (sem prémio)"
+                    )
 
             # COMANDOS DE ADMINISTRAÇÃO BLOQUEADOS (MANTIDOS)
             if sender_id in ADMINISTRADORES_PERMITIDOS:
